@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>娴侀噺涓庤惀鏀惰拷韪湅鏉?/title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        .chart-container { width: 100%; height: 350px; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        
+        /* 闈欐€佽〃鏍煎畾鍒舵牱寮?*/
+        .static-table th { background-color: #d1d5db; border-color: #9ca3af; color: #1f2937; }
+        .static-table td { border-color: #d1d5db; }
+        .bg-red-tag { background-color: #ef4444; color: white; padding: 0.1rem 0.25rem; font-weight: 500; display: inline-block; border-radius: 2px;}
+        .bg-green-tag { background-color: #22c55e; color: white; padding: 0.1rem 0.25rem; font-weight: 500; display: inline-block; border-radius: 2px;}
+    </style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'a0eaba82d5b84bbd91e00a2990ee1f1b'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- Header & Upload Area -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="bar-chart-2" class="w-8 h-8 text-indigo-600"></i>
+                <h1 class="text-2xl font-bold text-gray-900">娴侀噺涓庤惀鏀剁洰鏍囪拷韪湅鏉?/h1>
+            </div>
+            <div class="flex gap-4">
+                <div class="relative">
+                    <input type="file" id="uploadTraffic" accept=".xlsx, .xls, .csv" class="hidden">
+                    <label for="uploadTraffic" class="cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-indigo-200">
+                        <i data-lucide="upload" class="w-4 h-4"></i> 閲嶆柊涓婁紶娴侀噺搴曡〃
+                    </label>
+                </div>
+                <button id="runBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
+                    <i data-lucide="play" class="w-4 h-4"></i> 杩愯骞剁敓鎴愮湅鏉?
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Global Filters -->
+        <div class="glass-card shadow-sm rounded-xl p-5 flex flex-wrap items-center gap-6">
+            <div class="flex items-center gap-2 text-gray-700 font-medium">
+                <i data-lucide="filter" class="w-5 h-5 text-gray-500"></i>
+                <span>鍏ㄥ眬绛涢€?(褰卞搷鏉垮潡1-2-3):</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-500">瀵规瘮骞翠唤</label>
+                <select id="filterYear" class="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border">
+                    <option value="2026">2026骞?(瀵规瘮2025)</option>
+                    <option value="2025">2025骞?/option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-500">鏈堜唤閫夋嫨</label>
+                <select id="filterMonth" class="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border">
+                    <option value="ALL">鍏ㄥ勾/鍏ㄦ湀搴?/option>
+                    <option value="5">5鏈?/option>
+                    <option value="6">6鏈?/option>
+                    <option value="7">7鏈?/option>
+                    <option value="8">8鏈?/option>
+                    <option value="9">9鏈?/option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-500">娓犻亾澶х被</label>
+                <select id="filterCategory" class="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border">
+                    <option value="ALL">鍏ㄩ儴娓犻亾</option>
+                    <option value="楂樿浆">楂樿浆娴侀噺</option>
+                    <option value="浣庤浆">浣庤浆娴侀噺</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Board 1: KPI Cards -->
+        <div>
+            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+                澶х洏鏍稿績鎸囨爣涓庤惀鏀跺奖鍝?
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="board1-cards"></div>
+        </div>
+
+        <!-- 鍒嗘湀澶х洏璇︽儏鏄庣粏 -->
+        <div class="glass-card shadow-sm rounded-xl p-5 overflow-hidden">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="table" class="w-5 h-5 text-indigo-600"></i>
+                鍒嗘湀澶х洏璇︽儏鏄庣粏 (5-9鏈堣蛋鍔垮姣?
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-center border-collapse border border-gray-200" id="detail-table"></table>
+            </div>
+        </div>
+
+        <!-- Board 2 & 3 -->
+        <div class="grid grid-cols-1 gap-8">
+            <!-- Board 2 -->
+            <div class="glass-card shadow-sm rounded-xl p-5">
+                <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+                    鐢ㄦ埛鍒嗘笭閬撶被鍒?瓒嬪娍瀵规瘮
+                </h2>
+                <p class="text-xs text-gray-500 mb-4">灞曠ず楂?浣庤浆娴侀噺鍙樺寲鍙婃暣浣揋MV瓒嬪娍</p>
+                <div id="chart-board2" class="chart-container"></div>
+            </div>
+
+            <!-- Board 3 鍔ㄦ€佽仛鍚堢増 -->
+            <div class="glass-card shadow-sm rounded-xl p-0 border-t-4 border-indigo-500 overflow-hidden">
+                <div class="p-5 pb-2">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                        <span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">3</span>
+                        浜岀骇娓犻亾 娴侀噺鍒嗘湀鍚屾瘮涓嬫帰   
+                    </h2>
+                    <p class="text-xs text-gray-500">楂樿浆涓庝綆杞笭閬?5-9鏈?鍚屾瘮杩涢噺涓嬫帰琛ㄥ崟锛堝姩鎬佸彇鏁帮紝鍒嗙被姹囨€诲苟鑷姩鍚堝苟闀垮熬娓犻亾锛夈€?/p>
+                </div>
+
+                <!-- 娓犻亾骞村害瀵规瘮鍙樺寲 Top 5 瀹瑰櫒 -->
+                <div class="px-5 pt-2">
+                    <div id="board3-top-changes" class="flex flex-col md:flex-row gap-4 mb-4">
+                        <!-- Top 5 Data will be injected here -->
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto p-5 pt-2">
+                    <table class="w-full text-sm border-collapse border static-table text-center whitespace-nowrap">
+                        <thead>
+                            <tr>
+                                <th class="border py-2 px-2 font-bold w-24">娓犻亾绫诲埆</th>
+                                <th class="border py-2 px-4 font-bold w-48">娓犻亾</th>
+                                <th class="border py-2 px-4 font-bold w-32">鎸囨爣</th>
+                                <th class="border py-2 px-4 font-bold">5鏈?/th>
+                                <th class="border py-2 px-4 font-bold">6鏈?/th>
+                                <th class="border py-2 px-4 font-bold">7鏈?/th>
+                                <th class="border py-2 px-4 font-bold">8鏈?/th>
+                                <th class="border py-2 px-4 font-bold">9鏈?/th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white" id="board3-tbody">
+                            <!-- 鍔ㄦ€佹覆鏌撳唴瀹?-->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Board 4: Target Versions (Static) -->
+        <div class="glass-card shadow-sm rounded-xl p-0 border-t-4 border-emerald-500">
+            <div class="p-5 pb-2">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span class="bg-emerald-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">4</span>
+                    鐩爣鍙樺寲锛氱増鏈樊寮傚姣?  
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">鐙珛鏉垮潡锛氭渶鏂扮増鏈紙瀛ｅ害锛変笌鏃х増鏈紙骞村害锛夌殑鐩爣杩涢噺宸紓   </p>
+            </div>
+            
+            <div class="overflow-x-auto p-5 pt-2">
+                <table class="w-full text-sm border-collapse border static-table text-center whitespace-nowrap">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="border py-2 px-4 font-bold align-middle w-28">甯傚満</th>
+                            <th rowspan="2" class="border py-2 px-4 font-bold align-middle w-48">娓犻亾</th>
+                            <th colspan="3" class="border py-2 px-2 font-bold">26-07</th>
+                            <th colspan="3" class="border py-2 px-2 font-bold">26-08</th>
+                            <th colspan="3" class="border py-2 px-2 font-bold">26-09</th>
+                            <th colspan="3" class="border py-2 px-2 font-bold">Q3</th>
+                        </tr>
+                        <tr class="bg-gray-200 text-xs">
+                            <th class="border py-1 px-2 font-medium">瀛ｅ害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">骞村害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">瀵规瘮</th>
+                            <th class="border py-1 px-2 font-medium">瀛ｅ害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">骞村害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">瀵规瘮</th>
+                            <th class="border py-1 px-2 font-medium">瀛ｅ害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">骞村害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">瀵规瘮</th>
+                            <th class="border py-1 px-2 font-medium">瀛ｅ害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">骞村害鐗?/th>
+                            <th class="border py-1 px-2 font-medium">瀵规瘮</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
+                        <!-- Row 1: 棰嗕笘甯傚満 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 align-middle font-bold">棰嗕笘甯傚満</td>
+                            <td class="border py-2 px-4 text-left">鏈媶娓犻亾</td>
+                            <td class="border py-1 px-2">17197</td><td class="border py-1 px-2">14088</td><td class="border py-1 px-2 text-green-600 font-bold">22.07%</td>
+                            <td class="border py-1 px-2">6233</td><td class="border py-1 px-2">5191</td><td class="border py-1 px-2 text-green-600 font-bold">20.07%</td>
+                            <td class="border py-1 px-2">11926</td><td class="border py-1 px-2">6673</td><td class="border py-1 px-2 text-green-600 font-bold">78.72%</td>
+                            <td class="border py-1 px-2 font-semibold">35356</td><td class="border py-1 px-2 font-semibold">25952</td><td class="border py-1 px-2 text-green-600 font-bold">36.24%</td>
+                        </tr>
+                        <!-- Row 2: 鏈夐亾甯傚満 (Rowspan 7) -->
+                        <tr class="hover:bg-gray-50">
+                            <td rowspan="7" class="border py-2 px-4 align-middle font-bold">鏈夐亾甯傚満</td>
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾棰嗕笘閿€鍞?/td>
+                            <td class="border py-1 px-2">3995</td><td class="border py-1 px-2">7353</td><td class="border py-1 px-2 text-red-600 font-bold">-45.67%</td>
+                            <td class="border py-1 px-2">2238</td><td class="border py-1 px-2">2710</td><td class="border py-1 px-2 text-red-600 font-bold">-17.42%</td>
+                            <td class="border py-1 px-2">2708</td><td class="border py-1 px-2">3483</td><td class="border py-1 px-2 text-red-600 font-bold">-22.25%</td>
+                            <td class="border py-1 px-2 font-semibold">8941</td><td class="border py-1 px-2 font-semibold">13546</td><td class="border py-1 px-2 text-red-600 font-bold">-34.00%</td>
+                        </tr>
+                        <!-- Row 3 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾棰嗕笘瀛︾敓绔?/td>
+                            <td class="border py-1 px-2">1330</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2">745</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2">859</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2 font-semibold">2934</td><td class="border py-1 px-2 font-semibold">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                        </tr>
+                        <!-- Row 4 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾TMK</td>
+                            <td class="border py-1 px-2">2300</td><td class="border py-1 px-2">3145</td><td class="border py-1 px-2 text-red-600 font-bold">-26.87%</td>
+                            <td class="border py-1 px-2">950</td><td class="border py-1 px-2">1159</td><td class="border py-1 px-2 text-red-600 font-bold">-18.03%</td>
+                            <td class="border py-1 px-2">1620</td><td class="border py-1 px-2">1490</td><td class="border py-1 px-2 text-green-600 font-bold">8.72%</td>
+                            <td class="border py-1 px-2 font-semibold">4870</td><td class="border py-1 px-2 font-semibold">5794</td><td class="border py-1 px-2 text-red-600 font-bold">-15.95%</td>
+                        </tr>
+                        <!-- Row 5 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾TMK鍝佺墝缁?/td>
+                            <td class="border py-1 px-2">40</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2">40</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2">40</td><td class="border py-1 px-2">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                            <td class="border py-1 px-2 font-semibold">120</td><td class="border py-1 px-2 font-semibold">0</td><td class="border py-1 px-2 text-gray-500">-</td>
+                        </tr>
+                        <!-- Row 6 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾绔欏唴楂樹腑</td>
+                            <td class="border py-1 px-2">235</td><td class="border py-1 px-2">345</td><td class="border py-1 px-2 text-red-600 font-bold">-31.88%</td>
+                            <td class="border py-1 px-2">175</td><td class="border py-1 px-2">127</td><td class="border py-1 px-2 text-green-600 font-bold">37.80%</td>
+                            <td class="border py-1 px-2">148</td><td class="border py-1 px-2">163</td><td class="border py-1 px-2 text-red-600 font-bold">-9.20%</td>
+                            <td class="border py-1 px-2 font-semibold">558</td><td class="border py-1 px-2 font-semibold">635</td><td class="border py-1 px-2 text-red-600 font-bold">-12.13%</td>
+                        </tr>
+                        <!-- Row 7 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾绔欏唴鍒濅腑</td>
+                            <td class="border py-1 px-2">0</td><td class="border py-1 px-2">304</td><td class="border py-1 px-2 text-red-600 font-bold">-100.00%</td>
+                            <td class="border py-1 px-2">0</td><td class="border py-1 px-2">112</td><td class="border py-1 px-2 text-red-600 font-bold">-100.00%</td>
+                            <td class="border py-1 px-2">0</td><td class="border py-1 px-2">144</td><td class="border py-1 px-2 text-red-600 font-bold">-100.00%</td>
+                            <td class="border py-1 px-2 font-semibold">0</td><td class="border py-1 px-2 font-semibold">560</td><td class="border py-1 px-2 text-red-600 font-bold">-100.00%</td>
+                        </tr>
+                        <!-- Row 8 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 text-left">鏈夐亾-鏈夐亾鐧惧害</td>
+                            <td class="border py-1 px-2">1900</td><td class="border py-1 px-2">2057</td><td class="border py-1 px-2 text-red-600 font-bold">-7.63%</td>
+                            <td class="border py-1 px-2">1050</td><td class="border py-1 px-2">758</td><td class="border py-1 px-2 text-green-600 font-bold">38.52%</td>
+                            <td class="border py-1 px-2">850</td><td class="border py-1 px-2">974</td><td class="border py-1 px-2 text-red-600 font-bold">-12.73%</td>
+                            <td class="border py-1 px-2 font-semibold">3800</td><td class="border py-1 px-2 font-semibold">3789</td><td class="border py-1 px-2 text-green-600 font-bold">0.29%</td>
+                        </tr>
+                        <!-- Row 9: 杞粙缁嶅強鍏朵粬 -->
+                        <tr class="hover:bg-gray-50">
+                            <td class="border py-2 px-4 align-middle font-bold">杞粙缁嶅強鍏朵粬</td>
+                            <td class="border py-2 px-4 text-left">杞粙缁?瀛︾杞粙缁?/td>
+                            <td class="border py-1 px-2">157</td><td class="border py-1 px-2">138</td><td class="border py-1 px-2 text-green-600 font-bold">13.77%</td>
+                            <td class="border py-1 px-2">58</td><td class="border py-1 px-2">51</td><td class="border py-1 px-2 text-green-600 font-bold">13.73%</td>
+                            <td class="border py-1 px-2">74</td><td class="border py-1 px-2">66</td><td class="border py-1 px-2 text-green-600 font-bold">12.12%</td>
+                            <td class="border py-1 px-2 font-semibold">289</td><td class="border py-1 px-2 font-semibold">255</td><td class="border py-1 px-2 text-green-600 font-bold">13.33%</td>
+                        </tr>
+                        <!-- Row 10: 鍚堣 -->
+                        <tr class="bg-gray-100 border-t-2 border-gray-400 font-bold">
+                            <td colspan="2" class="border py-3 px-4 text-center">鍚堣</td>
+                            <td class="border py-2 px-2">27154</td><td class="border py-2 px-2">27430</td><td class="border py-2 px-2 text-red-600">-1.01%</td>
+                            <td class="border py-2 px-2">11489</td><td class="border py-2 px-2">10108</td><td class="border py-2 px-2 text-green-600">13.66%</td>
+                            <td class="border py-2 px-2">18225</td><td class="border py-2 px-2">12993</td><td class="border py-2 px-2 text-green-600">40.27%</td>
+                            <td class="border py-2 px-2 text-indigo-700">56868</td><td class="border py-2 px-2 text-indigo-700">50531</td><td class="border py-2 px-2 text-green-600">12.54%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // 澶栭儴鏁版嵁鏂囦欢 URL
+        const builtInDataStr = '';
+        
+        let trafficData = [];
+        let charts = {};
+
+        // 瑙ｆ瀽鍐呯疆TSV鏁版嵁
+        function parseTSVToJSON(tsv) {
+            const lines = tsv.trim().split('\n');
+            const headers = lines[0].split('\t').map(h => h.trim());
+            const result = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split('\t').map(v => v.trim());
+                let obj = {};
+                
+                headers.forEach((header, index) => {
+                    let val = values[index] !== undefined ? values[index] : '';
+                    if (val.startsWith('(') && val.endsWith(')')) {
+                        val = '-' + val.slice(1, -1);
+                    }
+                    val = val.replace(/,/g, '');
+                    if (header === '鏈? && val.includes('鏈?)) {
+                        val = val.replace('鏈?, '');
+                    }
+                    obj[header] = val;
+                });
+                result.push(obj);
+            }
+            return result;
+        }
+
+        function formatMoney(num) { return (num / 10000).toFixed(2) + '涓?; }
+        function formatNumber(num) { return num.toLocaleString(); }
+        function getYoY(current, last) {
+            if (!last || last === 0) return { text: '-', color: 'text-gray-500' };
+            const pct = ((current - last) / last) * 100;
+            const sign = pct >= 0 ? '+' : '';
+            return {
+                text: `${sign}${pct.toFixed(1)}% YoY`,
+                color: pct >= 0 ? 'text-red-500' : 'text-green-500'
+            };
+        }
+
+        function renderDashboard() {
+            const yearFilter = parseInt(document.getElementById('filterYear').value);
+            const monthFilter = document.getElementById('filterMonth').value;
+            const categoryFilter = document.getElementById('filterCategory').value; // 鑾峰彇娓犻亾绛涢€夊€?
+
+            let fData = trafficData;
+            // 搴旂敤鍏ㄥ眬绛涢€?
+            if (monthFilter !== 'ALL') fData = fData.filter(d => d['鏈?] == monthFilter);
+            if (categoryFilter !== 'ALL') fData = fData.filter(d => (d['娓犻亾绫诲埆'] || '').includes(categoryFilter));
+
+            const aggregateTraffic = (data, yr) => {
+                let yData = data.filter(d => d['骞?] == yr);
+                let res = { total: 0, highTotal: 0, gmv: 0 };
+                yData.forEach(d => {
+                    let num = parseFloat(d['杩涢噺浜烘暟']) || 0;
+                    let mny = parseFloat(d['鎴潰鍑€GMV']) || 0;
+                    res.total += num;
+                    res.gmv += mny;
+                    if ((d['娓犻亾绫诲埆'] || '').includes('楂樿浆')) res.highTotal += num;
+                });
+                res.highPct = res.total > 0 ? (res.highTotal / res.total) * 100 : 0;
+                res.ltv = res.total > 0 ? (res.gmv / res.total) : 0;
+                return res;
+            };
+
+            const currentYearData = aggregateTraffic(fData, yearFilter);
+            const lastYearData = aggregateTraffic(fData, yearFilter - 1);
+
+            const trafficYoY = getYoY(currentYearData.total, lastYearData.total);
+            const gmvYoY = getYoY(currentYearData.gmv, lastYearData.gmv);
+            const ltvYoY = getYoY(currentYearData.ltv, lastYearData.ltv);
+            const pctDiff = currentYearData.highPct - lastYearData.highPct;
+            const pctColor = pctDiff >= 0 ? 'text-red-500' : 'text-green-500';
+
+            // 娓叉煋 Board 1
+            document.getElementById('board1-cards').innerHTML = `
+                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div class="text-sm text-gray-500 mb-1">鎬昏繘閲忎汉鏁?/div>
+                    <div class="text-2xl font-bold text-gray-800">${formatNumber(currentYearData.total)}</div>
+                    <div class="text-sm font-medium mt-2 ${trafficYoY.color}">${trafficYoY.text}</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div class="text-sm text-gray-500 mb-1">鎴潰鍑€钀ユ敹(GMV)</div>
+                    <div class="text-2xl font-bold text-indigo-600">楼${formatMoney(currentYearData.gmv)}</div>
+                    <div class="text-sm font-medium mt-2 ${gmvYoY.color}">${gmvYoY.text}</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div class="text-sm text-gray-500 mb-1">楂樿浆娴侀噺鍗犳瘮</div>
+                    <div class="text-2xl font-bold text-gray-800">${currentYearData.highPct.toFixed(1)}%</div>
+                    <div class="text-sm font-medium mt-2 ${pctColor}">${pctDiff >=0 ? '+':''}${pctDiff.toFixed(1)}% YoY</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div class="text-sm text-gray-500 mb-1">浜哄潎鍑€LTV</div>
+                    <div class="text-2xl font-bold text-gray-800">楼${currentYearData.ltv.toFixed(2)}</div>
+                    <div class="text-sm font-medium mt-2 ${ltvYoY.color}">${ltvYoY.text}</div>
+                </div>
+            `;
+
+            // ===== 娓叉煋鍒嗘湀澶х洏璇︽儏鏄庣粏琛?=====
+            const tableMonths = [5, 6, 7, 8, 9];
+            
+            const getStats = (yr, mo) => {
+                let data = fData.filter(d => d['骞?] == yr && d['鏈?] == mo);
+                let total = 0, high = 0, gmv = 0;
+                data.forEach(d => {
+                    let n = parseFloat(d['杩涢噺浜烘暟']) || 0;
+                    total += n;
+                    gmv += parseFloat(d['鎴潰鍑€GMV']) || 0;
+                    if ((d['娓犻亾绫诲埆'] || '').includes('楂樿浆')) high += n;
+                });
+                let low = total - high;
+                return { total, gmv, high, low };
+            };
+
+            const targetStats = tableMonths.map(m => getStats(yearFilter, m));
+            const baseStats = tableMonths.map(m => getStats(yearFilter - 1, m));
+
+            const calcQ3 = (statsArray) => {
+                let q3 = { total: 0, gmv: 0, high: 0, low: 0 };
+                for(let i = 2; i <= 4; i++) {
+                    q3.total += statsArray[i].total;
+                    q3.gmv += statsArray[i].gmv;
+                    q3.high += statsArray[i].high;
+                    q3.low += statsArray[i].low;
+                }
+                return q3;
+            };
+
+            const targetQ3 = calcQ3(targetStats);
+            const baseQ3 = calcQ3(baseStats);
+
+            const getTableYoYBlock = (curr, base) => {
+                if (base === 0 && curr === 0) return '-';
+                if (base === 0) return '<span class="bg-green-500 text-white px-2 py-1 rounded text-xs">+100%</span>';
+                let diff = ((curr - base) / base * 100);
+                let sign = diff > 0 ? '+' : '';
+                let color = diff > 0 ? 'bg-green-500' : (diff < 0 ? 'bg-red-500' : 'bg-gray-400');
+                return `<span class="${color} text-white px-2 py-1 rounded text-xs inline-block min-w-[60px]">${sign}${diff.toFixed(2)}%</span>`;
+            };
+
+            let theadHtml = `<tr class="bg-gray-200 border-b border-gray-300 text-gray-700">
+                <th class="border border-gray-300 py-2 px-4 font-bold w-24">骞翠唤</th>
+                <th class="border border-gray-300 py-2 px-4 font-bold w-36">鎸囨爣</th>
+                ${tableMonths.map(m => `<th class="border border-gray-300 py-2 px-4 font-bold">${m}鏈?/th>`).join('')}
+                <th class="border border-gray-300 py-2 px-4 font-bold bg-indigo-100 text-indigo-800">Q3姹囨€?(7-9鏈?</th>
+            </tr>`;
+
+            const buildRow = (title, field, stats, q3Stat, isBold = false, isLast = false) => {
+                let borderClass = isLast ? 'border-b-2 border-gray-800' : 'border-b border-gray-200';
+                return `
+                <tr class="${borderClass} hover:bg-gray-50 bg-white">
+                    <td class="border border-gray-200 py-2 px-4 text-center">${title}</td>
+                    ${tableMonths.map((m, i) => `<td class="border border-gray-200 py-2 px-4">${Math.round(stats[i][field])}</td>`).join('')}
+                    <td class="border border-gray-200 py-2 px-4 bg-indigo-50 ${isBold ? 'font-bold text-indigo-700' : ''}">${Math.round(q3Stat[field])}</td>
+                </tr>`;
+            };
+
+            const buildYoYRow = (title, field, isLast = false) => {
+                let borderClass = isLast ? 'border-b-2 border-gray-800' : 'border-b border-gray-200';
+                return `
+                <tr class="${borderClass} hover:bg-gray-50 bg-white">
+                    <td class="border border-gray-200 py-2 px-4 text-center">${title}</td>
+                    ${tableMonths.map((m, i) => `<td class="border border-gray-200 py-2 px-4">${getTableYoYBlock(targetStats[i][field], baseStats[i][field])}</td>`).join('')}
+                    <td class="border border-gray-200 py-2 px-4 bg-indigo-50">${getTableYoYBlock(targetQ3[field], baseQ3[field])}</td>
+                </tr>`;
+            };
+
+            // 鏄庣粏琛ㄩ『搴? 鍑€钀ユ敹 -> 娴侀噺鏁?-> 楂樿浆娴侀噺鏁?-> 浣庤浆娴侀噺鏁?
+            let tbodyHtml = `
+                <tr class="border-b border-gray-200 hover:bg-gray-50 bg-white">
+                    <td rowspan="4" class="border border-gray-200 font-bold align-middle bg-gray-50 text-center">鍚屾瘮瓒嬪娍</td>
+                    <td class="border border-gray-200 py-2 px-4 text-center">鍑€钀ユ敹</td>
+                    ${tableMonths.map((m, i) => `<td class="border border-gray-200 py-2 px-4">${getTableYoYBlock(targetStats[i].gmv, baseStats[i].gmv)}</td>`).join('')}
+                    <td class="border border-gray-200 py-2 px-4 bg-indigo-50">${getTableYoYBlock(targetQ3.gmv, baseQ3.gmv)}</td>
+                </tr>
+                ${buildYoYRow('娴侀噺鏁?, 'total')}
+                ${buildYoYRow('楂樿浆娴侀噺鏁?, 'high')}
+                ${buildYoYRow('浣庤浆娴侀噺鏁?, 'low', true)}
+
+                <tr class="border-b border-gray-200 hover:bg-gray-50 bg-white">
+                    <td rowspan="4" class="border border-gray-200 font-bold align-middle bg-gray-50 text-center">${yearFilter}骞?/td>
+                    <td class="border border-gray-200 py-2 px-4 text-center">鍑€钀ユ敹</td>
+                    ${tableMonths.map((m, i) => `<td class="border border-gray-200 py-2 px-4">${Math.round(targetStats[i].gmv)}</td>`).join('')}
+                    <td class="border border-gray-200 py-2 px-4 bg-indigo-50 font-bold text-indigo-700">${Math.round(targetQ3.gmv)}</td>
+                </tr>
+                ${buildRow('娴侀噺鏁?, 'total', targetStats, targetQ3, true)}
+                ${buildRow('楂樿浆娴侀噺鏁?, 'high', targetStats, targetQ3)}
+                ${buildRow('浣庤浆娴侀噺鏁?, 'low', targetStats, targetQ3, false, true)}
+                
+                <tr class="border-b-2 border-gray-800"><td colspan="8" class="p-0 border-0 h-3 bg-gray-100"></td></tr>
+
+                <tr class="border-b border-gray-200 hover:bg-gray-50 bg-white">
+                    <td rowspan="4" class="border border-gray-200 font-bold align-middle bg-gray-50 text-center">${yearFilter - 1}骞?/td>
+                    <td class="border border-gray-200 py-2 px-4 text-center">鍑€钀ユ敹</td>
+                    ${tableMonths.map((m, i) => `<td class="border border-gray-200 py-2 px-4">${Math.round(baseStats[i].gmv)}</td>`).join('')}
+                    <td class="border border-gray-200 py-2 px-4 bg-indigo-50 font-bold text-indigo-700">${Math.round(baseQ3.gmv)}</td>
+                </tr>
+                ${buildRow('娴侀噺鏁?, 'total', baseStats, baseQ3, true)}
+                ${buildRow('楂樿浆娴侀噺鏁?, 'high', baseStats, baseQ3)}
+                ${buildRow('浣庤浆娴侀噺鏁?, 'low', baseStats, baseQ3, false, true)}
+            `;
+            document.getElementById('detail-table').innerHTML = `<thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody>`;
+
+            // ===== 娓叉煋鍥捐〃锛欱oard 2 =====
+            let chartData = {
+                currHigh: [], currLow: [], currGmv: [],
+                lastHigh: [], lastLow: [], lastGmv: []
+            };
+
+            tableMonths.forEach((m, i) => {
+                chartData.currHigh.push(targetStats[i].high);
+                chartData.currLow.push(targetStats[i].low);
+                chartData.currGmv.push(targetStats[i].gmv);
+                
+                chartData.lastHigh.push(baseStats[i].high);
+                chartData.lastLow.push(baseStats[i].low);
+                chartData.lastGmv.push(baseStats[i].gmv);
+            });
+
+            charts.board2.setOption({
+                tooltip: { 
+                    trigger: 'axis', 
+                    axisPointer: { type: 'shadow' } 
+                },
+                legend: { 
+                    data: [
+                        `${yearFilter-1}骞?楂樿浆杩涢噺`, `${yearFilter-1}骞?浣庤浆杩涢噺`, `${yearFilter-1}骞?鎬籊MV`, 
+                        `${yearFilter}骞?楂樿浆杩涢噺`, `${yearFilter}骞?浣庤浆杩涢噺`, `${yearFilter}骞?鎬籊MV`
+                    ], 
+                    bottom: 0 
+                },
+                grid: { left: '3%', right: '3%', bottom: '15%', top: '10%', containLabel: true },
+                xAxis: [{ 
+                    type: 'category', 
+                    data: ['5鏈?, '6鏈?, '7鏈?, '8鏈?, '9鏈?],
+                    axisPointer: { type: 'shadow' }
+                }],
+                yAxis: [
+                    { type: 'value', name: '杩涢噺浜烘暟' },
+                    { type: 'value', name: '钀ユ敹(鍏?', splitLine: { show: false } }
+                ],
+                series: [
+                    { 
+                        name: `${yearFilter-1}骞?楂樿浆杩涢噺`, type: 'bar', stack: 'LastYear', 
+                        data: chartData.lastHigh, itemStyle: { color: '#818cf8', opacity: 0.8 }, barMaxWidth: 40 
+                    },
+                    { 
+                        name: `${yearFilter-1}骞?浣庤浆杩涢噺`, type: 'bar', stack: 'LastYear', 
+                        data: chartData.lastLow, itemStyle: { color: '#cbd5e1', opacity: 0.8 }, barMaxWidth: 40 
+                    },
+                    { 
+                        name: `${yearFilter-1}骞?鎬籊MV`, type: 'line', yAxisIndex: 1, 
+                        data: chartData.lastGmv, itemStyle: { color: '#34d399' }, 
+                        lineStyle: { type: 'dashed', width: 2 }, symbol: 'emptyCircle', smooth: true 
+                    },
+                    { 
+                        name: `${yearFilter}骞?楂樿浆杩涢噺`, type: 'bar', stack: 'CurrYear', 
+                        data: chartData.currHigh, itemStyle: { color: '#4f46e5' }, barMaxWidth: 40 
+                    },
+                    { 
+                        name: `${yearFilter}骞?浣庤浆杩涢噺`, type: 'bar', stack: 'CurrYear', 
+                        data: chartData.currLow, itemStyle: { color: '#94a3b8' }, barMaxWidth: 40 
+                    },
+                    { 
+                        name: `${yearFilter}骞?鎬籊MV`, type: 'line', yAxisIndex: 1, 
+                        data: chartData.currGmv, itemStyle: { color: '#10b981' }, 
+                        lineStyle: { width: 3 }, symbol: 'circle', symbolSize: 6, smooth: true 
+                    }
+                ]
+            }, true);
+
+            // ===== 娓叉煋 Board 3: 浜岀骇娓犻亾 娴侀噺鍒嗘湀鍚屾瘮涓嬫帰 (鍔ㄦ€佽仛鍚堢増) =====
+            const b3Months = [5, 6, 7, 8, 9];
+            let highChannelAgg = {};
+            let lowChannelAgg = {};
+
+            // 1. 杩囨护骞舵彁鍙栭珮杞拰浣庤浆娴侀噺 (渚濊禆宸茶鍏ㄥ眬绛涢€夎繃婊ゅソ鐨?fData)
+            fData.forEach(d => {
+                let y = parseInt(d['骞?]);
+                let m = parseInt(d['鏈?]);
+                let cat = d['娓犻亾绫诲埆'] || '';
+                
+                if (b3Months.includes(m) && (y === yearFilter || y === yearFilter - 1)) {
+                    let ch = d['浜岀骇娓犻亾'] || '鏈煡娓犻亾';
+                    let vol = parseFloat(d['杩涢噺浜烘暟']) || 0;
+                    
+                    let targetAgg = null;
+                    if (cat.includes('楂樿浆')) targetAgg = highChannelAgg;
+                    else if (cat.includes('浣庤浆')) targetAgg = lowChannelAgg;
+                    
+                    if (targetAgg) {
+                        if (!targetAgg[ch]) {
+                            targetAgg[ch] = { 
+                                curr: {5:0, 6:0, 7:0, 8:0, 9:0}, 
+                                last: {5:0, 6:0, 7:0, 8:0, 9:0}, 
+                                totalCurr: 0 
+                            };
+                        }
+                        if (y === yearFilter) {
+                            targetAgg[ch].curr[m] += vol;
+                            targetAgg[ch].totalCurr += vol;
+                        } else {
+                            targetAgg[ch].last[m] += vol;
+                        }
+                    }
+                }
+            });
+
+            // ===== 鏂板锛氳绠楀苟娓叉煋娓犻亾杩涢噺缁濆鍊煎彉鍖?Top 5 =====
+            let allAggChannels = [];
+            const collectForTop5 = (aggObj) => {
+                for (let ch in aggObj) {
+                    let totalCurr = 0;
+                    let totalLast = 0;
+                    b3Months.forEach(m => {
+                        totalCurr += aggObj[ch].curr[m] || 0;
+                        totalLast += aggObj[ch].last[m] || 0;
+                    });
+                    let diff = totalCurr - totalLast;
+                    if (totalCurr > 0 || totalLast > 0) {
+                        allAggChannels.push({ name: ch, diff: diff, curr: totalCurr, last: totalLast });
+                    }
+                }
+            };
+            collectForTop5(highChannelAgg);
+            collectForTop5(lowChannelAgg);
+
+            // 鎸夌収缁濆澧為噺鎺掑簭
+            allAggChannels.sort((a, b) => b.diff - a.diff);
+            
+            let top5Increase = allAggChannels.filter(d => d.diff > 0).slice(0, 5);
+            let top5Decrease = [...allAggChannels].reverse().filter(d => d.diff < 0).slice(0, 5);
+
+            const renderTopList = (list, isIncrease) => {
+                if (list.length === 0) return '<div class="text-gray-400 text-xs py-2 text-center">鏃犳暟鎹?/div>';
+                return list.map(d => {
+                    let color = isIncrease ? 'text-green-600' : 'text-red-600';
+                    let sign = isIncrease ? '+' : '';
+                    return `<div class="flex justify-between items-center text-xs py-1.5 border-b border-gray-100 last:border-0">
+                        <span class="text-gray-700 truncate pr-2 font-medium" title="${d.name}">${d.name}</span>
+                        <span class="font-bold ${color}">${sign}${Math.round(d.diff)}</span>
+                    </div>`;
+                }).join('');
+            };
+
+            let topChangesHtml = `
+                <div class="flex-1 bg-green-50 p-4 rounded-lg shadow-sm border border-green-100">
+                    <div class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1 border-b border-green-200 pb-2">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>杩涢噺缁濆鍊煎鍔?Top 5 (瀵规瘮鍘诲勾)
+                    </div>
+                    ${renderTopList(top5Increase, true)}
+                </div>
+                <div class="flex-1 bg-red-50 p-4 rounded-lg shadow-sm border border-red-100">
+                    <div class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1 border-b border-red-200 pb-2">
+                        <i data-lucide="trending-down" class="w-4 h-4 text-red-600"></i>杩涢噺缁濆鍊煎噺灏?Bottom 5 (瀵规瘮鍘诲勾)
+                    </div>
+                    ${renderTopList(top5Decrease, false)}
+                </div>
+            `;
+            document.getElementById('board3-top-changes').innerHTML = topChangesHtml;
+            if (window.lucide) window.lucide.createIcons(); // 鍒锋柊鎻掑叆瀹瑰櫒鍐呯殑鍥炬爣
+
+            // 2. 鎺掑簭骞跺尯鍒?Top N 涓?"鍏朵粬" 鐨勯€氱敤鍑芥暟 (Board 3 涓嬫柟鐨勮〃鏍?
+            const processChannels = (aggObj, topN) => {
+                let sortedChannels = Object.keys(aggObj).sort((a, b) => aggObj[b].totalCurr - aggObj[a].totalCurr);
+                let finalChannels = [];
+                let others = { name: '鍏朵粬', curr: {5:0, 6:0, 7:0, 8:0, 9:0}, last: {5:0, 6:0, 7:0, 8:0, 9:0} };
+
+                sortedChannels.forEach((ch, index) => {
+                    if (index < topN) {
+                        finalChannels.push({ name: ch, curr: aggObj[ch].curr, last: aggObj[ch].last });
+                    } else {
+                        b3Months.forEach(m => {
+                            others.curr[m] += aggObj[ch].curr[m];
+                            others.last[m] += aggObj[ch].last[m];
+                        });
+                    }
+                });
+
+                let hasOthers = b3Months.some(m => others.curr[m] > 0 || others.last[m] > 0);
+                if (hasOthers) finalChannels.push(others);
+                
+                return finalChannels;
+            };
+
+            // 鍒嗗埆澶勭悊楂樿浆鍜屼綆杞殑 Top 8 鏁版嵁
+            let finalHighChannels = processChannels(highChannelAgg, 8);
+            let finalLowChannels = processChannels(lowChannelAgg, 8);
+
+            // 3. 鍔ㄦ€佺敓鎴?Board 3 鐨?HTML 琛ㄤ綋
+            let b3Html = '';
+
+            const getB3YoYTag = (curr, last) => {
+                if (last === 0 && curr === 0) return '-';
+                if (last === 0) return '<span class="bg-green-tag">+100.00%</span>';
+                let pct = ((curr - last) / last) * 100;
+                let tagClass = pct >= 0 ? 'bg-green-tag' : 'bg-red-tag';
+                let sign = pct > 0 ? '+' : '';
+                return `<span class="${tagClass}">${sign}${pct.toFixed(2)}%</span>`;
+            };
+
+            const renderChannelGroup = (groupName, channels) => {
+                if (channels.length === 0) return '';
+                let html = '';
+                let totalRows = channels.length * 3;
+
+                channels.forEach((item, index) => {
+                    let isFirst = index === 0;
+                    let isLast = index === channels.length - 1;
+                    let rowSpanHtml = isFirst ? `<td rowspan="${totalRows}" class="border py-2 px-2 align-middle font-bold bg-gray-50">${groupName}</td>` : '';
+                    let trBorderClass = isLast ? 'border-b-2 border-gray-300' : '';
+                    
+                    html += `
+                        <tr>
+                            ${rowSpanHtml}
+                            <td rowspan="3" class="border py-2 px-4 align-middle text-left">${item.name}</td>
+                            <td class="border py-1 px-4 text-gray-700">${yearFilter}骞磋繘閲?/td>
+                            ${b3Months.map(m => `<td class="border py-1 px-2">${Math.round(item.curr[m])}</td>`).join('')}
+                        </tr>
+                        <tr>
+                            <td class="border py-1 px-4 text-gray-700">${yearFilter - 1}骞磋繘閲?/td>
+                            ${b3Months.map(m => `<td class="border py-1 px-2">${Math.round(item.last[m])}</td>`).join('')}
+                        </tr>
+                        <tr class="bg-gray-50 ${trBorderClass}">
+                            <td class="border py-1 px-4 text-gray-700 font-medium">鍚屾瘮</td>
+                            ${b3Months.map(m => `<td class="border py-1 px-2">${getB3YoYTag(item.curr[m], item.last[m])}</td>`).join('')}
+                        </tr>
+                    `;
+                });
+                return html;
+            };
+
+            // 鎷兼帴琛ㄤ綋锛氶珮杞笭閬撳厛灞曠ず锛屼綆杞笭閬撳悗灞曠ず
+            b3Html += renderChannelGroup('楂樿浆娓犻亾', finalHighChannels);
+            b3Html += renderChannelGroup('浣庤浆娓犻亾', finalLowChannels);
+
+            document.getElementById('board3-tbody').innerHTML = b3Html;
+        }
+
+        function showMessage(msg, isSuccess = true) {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg z-[100] text-white transition-opacity duration-500 flex items-center gap-2 ${isSuccess ? 'bg-emerald-500' : 'bg-red-500'}`;
+            toast.innerHTML = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.style.opacity = '0', 2500);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawJson = XLSX.utils.sheet_to_json(worksheet);
+                
+                trafficData = rawJson.map(row => {
+                    let cleanRow = {};
+                    for (let key in row) {
+                        cleanRow[key.trim()] = typeof row[key] === 'string' ? row[key].trim() : row[key];
+                    }
+                    return cleanRow;
+                });
+                showMessage("<span>鉁?/span><span>娴侀噺搴曡〃宸茶В鏋愶紝璇风偣鍑汇€愯繍琛屻€戝埛鏂扮湅鏉裤€?/span>");
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 浠庡閮ㄦ枃浠跺姞杞芥暟鎹紙鏀寔 JSON 鍜?TSV 涓ょ鏍煎紡锛?
+        async function loadDataFromFile(url) {
+            try {
+                const resp = await fetch(url, { cache: 'no-cache' });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const text = await resp.text();
+                
+                if (url.endsWith('.json')) {
+                    const jsonData = JSON.parse(text);
+                    trafficData = jsonData.map(row => {
+                        let obj = {};
+                        for (let key in row) {
+                            obj[key] = String(row[key] ?? '');
+                        }
+                        return obj;
+                    });
+                } else {
+                    trafficData = parseTSVToJSON(text);
+                }
+                return true;
+            } catch (err) {
+                console.warn('鍔犺浇 ' + url + ' 澶辫触: ' + err.message);
+                return false;
+            }
+        }
+
+        window.onload = async () => {
+            charts.board2 = echarts.init(document.getElementById('chart-board2'));
+
+            // 浼樺厛浠庡閮?data.json 鍔犺浇锛屽け璐ュ垯灏濊瘯 data.tsv
+            const jsonOk = await loadDataFromFile('data.json');
+            if (jsonOk) {
+                showMessage("<span>鉁?/span><span>宸蹭粠 data.json 鍔犺浇娴侀噺搴曡〃鏁版嵁</span>");
+            } else {
+                const tsvOk = await loadDataFromFile('data.tsv');
+                if (tsvOk) {
+                    showMessage("<span>鉁?/span><span>宸蹭粠 data.tsv 鍔犺浇娴侀噺搴曡〃鏁版嵁</span>");
+                } else {
+                    trafficData = [];
+                    showMessage("<span>鈿狅笍</span><span>鏈兘鍔犺浇澶栭儴鏁版嵁鏂囦欢锛岃涓婁紶 Excel 搴曡〃</span>", false);
+                }
+            }
+
+            document.getElementById('filterYear').addEventListener('change', renderDashboard);
+            document.getElementById('filterMonth').addEventListener('change', renderDashboard);
+            document.getElementById('filterCategory').addEventListener('change', renderDashboard); // 缁戝畾娓犻亾澶х被绛涢€?
+            document.getElementById('uploadTraffic').addEventListener('change', handleFileUpload);
+            document.getElementById('runBtn').addEventListener('click', renderDashboard);
+
+            renderDashboard();
+
+            window.addEventListener('resize', () => {
+                Object.values(charts).forEach(c => c.resize());
+            });
+        };
+    </script>
+</body>
+</html>
